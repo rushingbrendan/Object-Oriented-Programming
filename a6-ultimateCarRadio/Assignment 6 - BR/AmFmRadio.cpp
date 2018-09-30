@@ -1,0 +1,929 @@
+/*
+*  FILE          : AmFmRadio.cpp
+*  PROJECT       : PROG1385 - Object Oriented Programming Assignment #6
+*  PROGRAMMER    : Brendan Rushing
+*  FIRST VERSION : 2018-07-24
+*  DESCRIPTION   :
+*	This assignment modifys assignment #5 to use more inheritance.
+Create PioneerAM based on PioneerRadio
+Create PioneerWorld based on PioneerAM
+Match display output as specified.
+Use try and catch in the test harness. Print error codes and end program.
+*/
+
+
+//INCLUDE FILES
+#include "AmFmRadio.h"
+//eo INCLUDE FILES
+
+
+
+/*
+* FUNCTION : ~AmFmRadio
+*
+* DESCRIPTION : This function is a destructor for the AmFmRadio class
+*
+* PARAMETERS : none
+*
+*
+* RETURNS : none
+*/
+AmFmRadio::~AmFmRadio(void) {
+
+	if (GetDisplayOutput()) {
+
+		if (!GetIsDestroyed()) {
+
+			SetIsDestroyed(true);
+			std::cout << "Destroying AmFmRadio Class" << std::endl;
+		}
+
+	}
+
+	
+}//eo destructor
+
+
+
+
+/*
+* FUNCTION : AmFmRadio
+*
+* DESCRIPTION : This function is a paramaterized constructor for the AmFmRadio class
+*
+* PARAMETERS : bool status, struct freqs arrayOfFreq[RADIO_PRESETS]
+*
+*
+* RETURNS : none
+*/
+AmFmRadio::AmFmRadio(bool status, struct Freqs arrayOfFreq[RADIO_PRESETS], int inputRadioType)
+{
+
+	on = status;
+
+	for (int i = 0; i < RADIO_PRESETS; ++i)
+	{
+		button[i].AMFreq = arrayOfFreq[i].AMFreq;
+		prevAMFreq = button[i].AMFreq;
+
+		if (inputRadioType == PIONEER_XS440_WRLD) {
+			int valueDivdedByNine = (int)arrayOfFreq[i].AMFreq;
+			valueDivdedByNine = valueDivdedByNine / PIONEER_WORLD_AM_SCAN;
+			valueDivdedByNine = valueDivdedByNine * PIONEER_WORLD_AM_SCAN;
+
+			//MAKE SURE IT IS A value of 9
+			button[i].AMFreq = (double)valueDivdedByNine;
+			prevAMFreq = button[i].AMFreq;
+
+		}
+		currentButton = i;
+	}
+	for (int j = 0; j < RADIO_PRESETS; ++j)
+	{
+		button[j].FMFreq = arrayOfFreq[j].FMFreq;
+		prevFMFreq = button[j].FMFreq;
+		currentButton = j;
+	}
+
+	current_station = INITIAL_STATION;
+
+	if (inputRadioType == PIONEER_XS440_WRLD) {
+
+		current_station = PIONEER_XS_440_WRLD_INITIAL_STATION;
+	}
+
+	strcpy(frequency, "AM");
+	volume = VOLUME_MIN;
+	prevVolume = VOLUME_MIN;
+	displayOutput = false;
+	radioType = inputRadioType;
+	isDestroyed = false;
+
+}//eo AmFmRadio::AmFmRadio(bool status, struct freqs arrayOfFreq[RADIO_PRESETS])
+
+
+
+/*
+* FUNCTION : AmFmRadio
+*
+* DESCRIPTION : This function is a paramaterized constuctor for the AmFmRadio class
+*
+* PARAMETERS : bool status
+*
+*
+* RETURNS : none
+*/
+AmFmRadio::AmFmRadio(bool status)
+{
+	for (int i = 0; i < RADIO_PRESETS; ++i)
+	{
+
+		button[i].AMFreq = AM_MIN;
+		prevAMFreq = button[i].AMFreq;
+
+		if (GetRadioType() == PIONEER_XS440_WRLD) {
+
+			button[i].AMFreq = PIONEER_WORLD_AM_MIN;
+			prevAMFreq = button[i].AMFreq;
+
+		}
+
+		currentButton = i;
+	}
+	for (int j = 0; j < RADIO_PRESETS; ++j)
+	{
+		button[j].FMFreq = FM_MIN;
+		prevFMFreq = button[j].FMFreq;
+		currentButton = j;
+	}
+	current_station = AM_MIN;
+	strcpy(frequency, "AM");
+	volume = VOLUME_MIN;
+	prevVolume = VOLUME_MIN;
+	displayOutput = false;
+	radioType = PIONEER_XS440;
+	isDestroyed = false;
+
+	on = status;
+}//eo AmFmRadio::AmFmRadio(bool status)
+
+
+
+
+/*
+* FUNCTION : PowerToggle
+*
+* DESCRIPTION : This function toggles the bool value for on variable.
+				This variable is the value for power of the radio
+*
+* PARAMETERS : none
+*
+*
+* RETURNS : none
+*/
+void AmFmRadio::PowerToggle(void)
+{
+	if( on == false )
+	{
+	
+		on = true;
+		volume = prevVolume;
+	}
+	else
+	{
+		on = false;
+		volume = VOLUME_MIN;
+	}
+}//eo void AmFmRadio::PowerToggle(void)
+
+
+
+
+/*
+* FUNCTION : IsRadioOn
+*
+* DESCRIPTION : This function returns the value for the on variable
+*
+* PARAMETERS : none
+*
+*
+* RETURNS : bool:on
+*/
+bool AmFmRadio::IsRadioOn(void)
+{
+	return on;
+
+}//eo bool AmFmRadio::IsRadioOn(void)
+
+
+
+
+
+/*
+* FUNCTION : SetVolume
+*
+* DESCRIPTION : This function sets the volume by prompting the user for input
+*
+* PARAMETERS : none
+*
+*
+* RETURNS : int
+*/
+int AmFmRadio::SetVolume(void)
+{
+	char buf[BUFFER_SIZE] = "";
+
+	printf("\nEnter the volume level (0 - 100). ");
+	fgets(buf, sizeof buf, stdin);
+	volume = atoi(buf);
+	prevVolume = volume;
+
+	SetVolume(volume);
+	return volume;
+}//eo int AmFmRadio::SetVolume(void)
+
+
+
+
+/*
+* FUNCTION : SetVolume
+*
+* DESCRIPTION : This function changes the value for the volume variable
+*
+* PARAMETERS : int inputVolume
+*
+*
+* RETURNS : int
+*/
+int AmFmRadio::SetVolume(int inputVolume)
+{
+	volume = inputVolume;
+	prevVolume = volume;
+
+	if( volume < VOLUME_MIN ) //if user enters volume less than 0, volume = 0
+	{
+		volume = VOLUME_MIN;
+		prevVolume = volume;
+		return volume;
+	}
+
+	if( volume > VOLUME_MAX ) //if user enters volume greater than 100, volume = 100
+	{
+		volume = VOLUME_MAX;
+		prevVolume = volume;
+		return volume;
+	}
+	return volume;
+}//eo int AmFmRadio::SetVolume(int inputVolume)
+
+
+
+
+/*
+* FUNCTION : ToggleFrequenecy
+*
+* DESCRIPTION : This function toggles the frequency variable 
+				AM to FM & FM to AM
+*
+* PARAMETERS : none
+*
+*
+* RETURNS : none
+*/
+void AmFmRadio::ToggleFrequency(void)
+{
+	if( strcmp(frequency, "AM") == 0 )
+	{
+		strcpy(frequency, "FM");
+		current_station = prevFMFreq;
+		
+	}
+	else
+	{
+		strcpy(frequency, "AM");
+		current_station = prevAMFreq;
+		
+	}
+}//eo void AmFmRadio::ToggleFrequency(void)
+
+
+
+/*
+* FUNCTION : SetButton
+*
+* DESCRIPTION : This function sets button with current station 
+*				by being passed a button number
+*
+* PARAMETERS : int button_num
+*
+*
+* RETURNS : int
+*/
+int AmFmRadio::SetButton(int button_num)
+{
+	if( (button_num >= 0) && (button_num <= (RADIO_PRESETS-1) ))
+	{
+		currentButton = button_num;
+
+		if( strcmp("AM", frequency) == 0 )
+		{
+			
+			button[button_num].AMFreq = current_station;
+		}
+		else if(strcmp("FM", frequency) == 0 )
+		{
+			
+			button[button_num].FMFreq = current_station;
+		}
+		return SUCCESS;
+
+	}
+	return FAILURE;
+
+}//eo int AmFmRadio::SetButton(int button_num)
+
+
+
+
+/*
+* FUNCTION : SelectedCurrentStation
+*
+* DESCRIPTION : This function sets current station 
+*				by being passed a button number
+*
+* PARAMETERS : int: button_num
+*
+*
+* RETURNS : int
+*/
+int AmFmRadio::SelectCurrentStation(int button_num)
+{
+	if( (button_num >= 0) && (button_num <= (RADIO_PRESETS - 1)) )
+	{
+		currentButton = button_num;
+
+		if( strcmp("AM", frequency) == 0 )
+		{
+			current_station = button[button_num].AMFreq;
+			prevAMFreq = button[button_num].AMFreq;
+		}
+		else if (strcmp("AM", frequency) == 0)
+		{
+			current_station = button[button_num].FMFreq;
+			prevFMFreq = button[button_num].FMFreq;
+		}
+
+		return SUCCESS;
+	}
+	return FAILURE;
+
+}//eo int AmFmRadio::SelectCurrentStation(int button_num)
+
+
+
+
+/*
+* FUNCTION : ShowCurrentSettings
+*
+* DESCRIPTION : This function outputs the current setting variables
+				to the screen.
+*
+* PARAMETERS : none
+*
+*
+* RETURNS : none
+*/
+void AmFmRadio::ShowCurrentSettings(void)
+{
+
+	if( on )
+	{
+		printf("\n\nRadio is on. \n");
+	}
+	else
+	{
+		printf("\n\nRadio is off. \n");
+	}
+
+	printf("\nFrequency: %s\n", frequency);
+	printf("Volume: %d\n", volume);
+	
+	if (!strcmp(frequency, "AM")) {
+
+		printf("Current Station: %.f %s\n", current_station, frequency);
+	}
+	
+	if (!strcmp(frequency, "FM")) {
+
+		printf("Current Station: %.1f %s\n", current_station, frequency);
+	}
+	printf("AM Button Settings: ");
+	for( int i = 0; i < RADIO_PRESETS; ++i )
+	{
+		printf("%d) %6.0f ", i + 1, button[i].AMFreq);
+	}
+
+	if (radioType == PIONEER_XS440) {
+
+		printf("\nFM Button Settings: ");
+		for (int j = 0; j < RADIO_PRESETS; ++j)
+		{
+			printf("%d) %6.1f ", j + 1, button[j].FMFreq);
+		}
+
+	}
+
+	
+}//eo void AmFmRadio::ShowCurrentSettings(void)
+
+
+
+
+/*
+* FUNCTION : ScanDown
+*
+* DESCRIPTION : This function scans the frequency down.
+				The frequency will decrement 10 khz if AM
+					& 0.2 Mhz if FM
+*
+* PARAMETERS : none
+*
+*
+* RETURNS : none
+*/
+void AmFmRadio::ScanDown(void)
+{
+	if (strcmp("AM", frequency) == 0)
+	{
+		//if current_station is 530, the current_station becomes 1700
+		if (current_station <= AM_MIN)
+		{
+			current_station = AM_MAX;
+		}
+		else
+		{
+			current_station = current_station - 10;
+		}
+
+		prevAMFreq = current_station;
+	}
+	else if (strcmp("FM", frequency) == 0)
+	{
+		//if the current_station is 87.9, the current_station becomes 107.9
+		//Note: car radios jump .2 for the FM. That's how it's modeled here.
+		if (current_station <= FM_MIN)
+		{
+			current_station = FM_MAX;
+		}
+		else
+		{
+			current_station = current_station - .2;
+		}
+
+		prevFMFreq = current_station;
+	}
+
+	if (displayOutput) {
+
+		printf("\nCurrent station: %f %s\n", current_station, frequency);
+	}//eo if (displayOutput) {
+
+
+
+}//eo void AmFmRadio::ScanDown(void)
+
+
+
+
+
+/*
+* FUNCTION : ScanUp
+*
+* DESCRIPTION : This function scans the frequency up.
+				The frequency will increment 10 khz if AM
+					& 0.2 Mhz if FM
+
+* PARAMETERS : none
+*
+*
+* RETURNS : none
+*/
+void AmFmRadio::ScanUp(void)
+{
+	if (strcmp("AM", frequency) == 0)
+	{
+		//if current_station is 1700, the current_station becomes 530
+		if (current_station >= AM_MAX)
+		{
+			current_station = AM_MIN;
+		}
+		else
+		{
+			current_station = current_station + 10;
+
+		}
+
+		prevAMFreq = current_station;
+	}
+	else if (strcmp("FM", frequency) == 0)
+	{
+		//if the current_station is 107.9, the current_station becomes 87.9
+		//Note: car radios jump .2 for the FM. That's how it's modeled here.
+		if (current_station >= FM_MAX)
+		{
+			current_station = FM_MIN;
+
+		}
+		else
+		{
+			current_station = current_station + .2;
+
+		}
+
+		prevFMFreq = current_station;
+	}
+
+	if (displayOutput) {
+
+		printf("\nCurrent station: %f %s\n", current_station, frequency);
+
+	}//eo if (displayOutput) {
+
+
+
+}//eo void AmFmRadio::ScanUp(void)
+
+
+
+/*
+* FUNCTION : SetCurrentStation
+*
+* DESCRIPTION : This functionn changes the value for current_station variable
+*
+* PARAMETERS : double: currentStationValue
+*
+*
+* RETURNS : none
+*/
+void AmFmRadio::SetCurrentStation(double currentStationValue) {
+
+	if (strcmp("AM", frequency) == 0)
+	{
+		//if current_station is greater than 1700 khz then set to 1700 khz
+		if (currentStationValue > AM_MAX)
+		{
+			current_station = AM_MAX;
+
+		}
+		//if current_station is less than 530 then set to 530
+		else if (currentStationValue < AM_MIN)
+		{
+			current_station = AM_MIN;
+
+		}
+
+		else {
+
+			current_station = currentStationValue;
+
+		}
+
+		prevAMFreq = current_station;
+	}
+	else if (strcmp("FM", frequency) == 0 )
+	{
+		//if current_station is greater than 107.9 then set to 107.9
+		if (currentStationValue > FM_MAX){
+
+			current_station = FM_MAX;
+		}
+		//if current_station is less than 87.9 then set to 87.9
+		else if (currentStationValue < FM_MIN){
+
+			current_station = FM_MIN;
+		}
+
+		else {
+
+			current_station = currentStationValue;
+
+		}
+
+		prevFMFreq = current_station;
+	}
+
+
+}//eo void AmFmRadio::SelectCurrentStation(double currentStationValue) {
+
+
+
+
+
+/*
+* FUNCTION : SetDisplayOutput
+*
+* DESCRIPTION : This function changes the value for the displayOutput variable
+*
+* PARAMETERS : bool inputDisplayOutput
+*
+*
+* RETURNS : none
+*/
+void AmFmRadio::SetDisplayOutput(bool inputDisplayOutput)
+{
+
+	displayOutput = inputDisplayOutput;
+
+}//eo void AmFmRadio::SetDisplayOutput(bool inputDisplayOutput)
+
+
+
+
+/*
+* FUNCTION : getVolume
+*
+* DESCRIPTION : This function returns the value of the volume variable
+*
+* PARAMETERS : none
+*
+*
+* RETURNS : int volume
+*/
+int AmFmRadio::GetVolume(void) {
+
+	return volume;
+
+}//eo int AmFmRadio::SetVolume() {
+
+
+
+
+
+/*
+* FUNCTION : getCurrentStation
+*
+* DESCRIPTION : This function returns the value of the current_station
+*
+* PARAMETERS : none
+*
+*
+* RETURNS : doube: current_station
+*/
+double AmFmRadio::GetCurrentStation(void) {
+
+	return current_station;
+
+}//eo int AmFmRadio::SetVolume() {
+
+
+
+
+/*
+* FUNCTION : getOn
+*
+* DESCRIPTION : This function returns the value for the on variable
+*
+* PARAMETERS : none
+*
+*
+* RETURNS : bool: on
+*/
+bool AmFmRadio::GetOn(void) {
+
+	return on;
+
+}//eo bool AmFmRadio::getOn(void) {
+
+
+
+
+/*
+* FUNCTION : getDisplayOutput
+*
+* DESCRIPTION : This function returns the value of displayOutput variable
+*
+* PARAMETERS : none
+*
+*
+* RETURNS : bool: displayOutput
+*/
+bool AmFmRadio::GetDisplayOutput(void) {
+
+	return displayOutput;
+
+}//eo bool AmFmRadio::getDisplayOutput(void) {
+
+
+
+
+/*
+* FUNCTION : getCurrentBand
+*
+* DESCRIPTION : This function is returns the value of the frequency variable
+*
+* PARAMETERS : none
+*
+*
+* RETURNS : char: currentBand
+*/
+char AmFmRadio::GetCurrentBand(void) {
+
+	if (strcmp("AM", frequency) == 0){
+
+		return AM_BAND;
+	}
+
+	else if (strcmp("FM", frequency) == 0 ) {
+
+		return FM_BAND;
+
+	}
+
+	return FAILURE;
+
+}//eo char AmFmRadio::getCurrentBand(void) {
+
+
+/*
+* FUNCTION : getRadioPresets
+*
+* DESCRIPTION : This function returns the location of the radio preset information
+*
+* PARAMETERS : none
+*
+*
+* RETURNS : location of button arrays with radio preset information
+*/
+struct Freqs* AmFmRadio::GetRadioPresets(void) {
+
+	return &button[0];
+
+}//eo struct Freqs* getRadioPresets(void) {
+
+
+
+
+
+
+ /*
+ * FUNCTION : GetPrevFreq
+ *
+ * DESCRIPTION : This function returns the value of the previous freq
+					AM if paramater is AM_BAND
+					FM if paramater is FM_BAND
+ *
+ * PARAMETERS : int AM_BAND or FM_BAND
+ *
+ *
+ * RETURNS : double freq
+ */
+double AmFmRadio::GetPrevFreq(int inputBand) {
+
+	if (inputBand == AM_BAND) {
+
+		return prevAMFreq;
+	}
+
+	else if (inputBand == FM_BAND){
+
+		return prevFMFreq;
+
+	}
+
+	return EXIT_FAILURE;
+
+
+}//eo double AmFmRadio::getPrevFreq(void) {
+
+
+
+
+ /*
+ * FUNCTION : SetPrevFreq
+ *
+ * DESCRIPTION : This function sets the value of the previous freq
+ AM if paramater is AM_BAND
+ FM if paramater is FM_BAND
+ *
+ * PARAMETERS : int AM_BAND or FM_BAND
+				double inputFreq
+ *
+ *
+ * RETURNS : none
+ */
+void AmFmRadio::SetPrevFreq(int inputBand, double inputFreq) {
+
+	if (inputBand == AM_BAND) {
+
+		prevAMFreq = inputFreq;
+	}
+
+	else if (inputBand == FM_BAND) {
+
+		prevFMFreq = inputFreq;
+
+	}
+
+
+}//eo double AmFmRadio::getPrevFreq(void) {
+
+
+
+
+
+ /*
+ * FUNCTION : SetRadioType
+ *
+ * DESCRIPTION : This function sets the type of radio.
+ *					1) PIONEER_XS440
+ *					2) PIONEER_XS440_AM
+ *					3) PIONEER_XS440_WRLD
+  *
+ * PARAMETERS : int inputRadioType
+ *
+ * RETURNS : none
+ */
+
+void AmFmRadio::SetRadioType(int inputRadioType) {
+
+	if ((inputRadioType == PIONEER_XS440) || (inputRadioType == PIONEER_XS440_AM)
+	|| (inputRadioType == PIONEER_XS440_WRLD) ){
+
+		radioType = inputRadioType;
+	}
+
+
+}//eo void AmFmRadio::SetRadioType(int inputRadioType) {
+
+
+
+ /*
+ * FUNCTION : GetRadioType
+ *
+ * DESCRIPTION : This function returns the type of radio.
+ *					1) PIONEER_XS440
+ *					2) PIONEER_XS440_AM
+ *					3) PIONEER_XS440_WRLD
+ *
+ * PARAMETERS : none
+ *
+ * RETURNS : int: radioType
+ */
+
+int AmFmRadio::GetRadioType(void) {
+
+	return radioType;
+
+}//eo int AmFmRadio::SetRadioType(void) {
+
+
+
+
+ /*
+ * FUNCTION : SetBand
+ *
+ * DESCRIPTION : This function sets the value of the freq
+ AM if paramater is AM_BAND
+ FM if paramater is FM_BAND
+ *
+ * PARAMETERS : int AM_BAND or FM_BAND
+ *
+ *
+ * RETURNS : none
+ */
+
+void AmFmRadio::SetBand(int inputBand) {
+
+	if (inputBand == AM_BAND) {
+
+		strcpy(frequency, "AM");
+
+	}
+
+	else if (inputBand == FM_BAND) {
+
+		strcpy(frequency, "FM");
+	}
+	
+}//eo void AmFmRadio::SetBand(int inputBand) {
+
+
+
+
+/*
+* FUNCTION : SetIsDestroyed
+*
+* DESCRIPTION : This function sets the value of the isDestroyed bool
+*
+* PARAMETERS : bool true or false
+*
+*
+* RETURNS : none
+*/
+
+void AmFmRadio::SetIsDestroyed(bool inputIsDestroyed) {
+
+	isDestroyed = inputIsDestroyed;
+	
+
+}//eo void AmFmRadio::SetIsDestroyed(bool inputIsDestroyed) {
+
+
+
+ /*
+ * FUNCTION : GetIsDestroyed
+ *
+ * DESCRIPTION : This function gets the value of the isDestroyed bool
+ *
+ * PARAMETERS : none
+ *
+ *
+ * RETURNS : bool true or false
+ */
+
+bool AmFmRadio::GetIsDestroyed(void) {
+
+	return isDestroyed;
+
+
+}//eo bool AmFmRadio::GetIsDestroyed(void) {
